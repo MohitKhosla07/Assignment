@@ -1,0 +1,47 @@
+name: CD Pipeline
+
+on: 
+  pull_request:
+    branches:
+      - stage      
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+	environment: staeg
+
+  steps: 
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: azure login
+      run: azure/login@v1
+	  with:
+	    creds: |
+		  {
+		    "clientid": "${{secrets.AZURE_CLIENT_ID}}"
+			"clientSecret": "${{secrets.AZURE_CLIENT_SECRET}}"
+			"subscriptionID": "${{secrets.AZURE_CLIENT_SUBSCRIPTION}}"
+			"tenantid": "${{secrets.AZURE_TENANT_ID}}"
+		  
+		  
+		  }
+
+    - name: terraform init
+	  run: terraform init
+	  working-directory: terraform
+	  
+    - name: terraform plan
+	  run: terraform plan
+	  working-directory: terraform
+	  
+    - name: terraform apply
+	  run: terraform plan -auto-approve -var="env=stage"
+	  working-directory: terraform
+	  
+    - name: upload build files
+	  run: |
+	     az storage blob upload-batch --account-name <storage-account-name> -d "$web" -s build
